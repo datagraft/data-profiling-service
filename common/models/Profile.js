@@ -14,7 +14,7 @@ module.exports = function(Profile) {
 
   Profile.disableRemoteMethod("deleteById", false);
 
-  Profile.disableRemoteMethod("count", false);
+  Profile.disableRemoteMethod("count", true);
   Profile.disableRemoteMethod("exists", true);
 
   Profile.disableRemoteMethod("createChangeStream", true);
@@ -22,12 +22,14 @@ module.exports = function(Profile) {
   Profile.disableRemoteMethod("prototype.updateAttributes", true);
   Profile.disableRemoteMethod("replaceById", true);
 
-  // Summary statistics override findById
-  Profile.summary = function(profileId, cb) {
+  // Summary-full statistics override findById
+  Profile.summaryFull = function(id, cb) {
 
-    Profile.findById( profileId, function (err, instance) {
+    Profile.findById( id, function (err, instance) {
 
-      var data = dl.summary(dl.csv(instance.url));
+      var csv = dl.csv(instance.url);
+
+      var data = dl.summary(csv);
 
       for(var i = 0; i < data.length; i++) {
         delete data[i].unique;
@@ -36,15 +38,39 @@ module.exports = function(Profile) {
     });
   };
 
-  // Summary remote method
+  // Summary-full remote method
   Profile.remoteMethod (
-    'summary',
+    'summaryFull',
     {
-      http: {path: '/summary', verb: 'get'},
-      accepts: {arg: 'id', type: 'number', http: { source: 'query' } },
-      returns: {arg: 'name', type: 'string'}
+      http: {path: '/summary/full', verb: 'get'},
+      description: 'Generate a full summary for all columns in a dataset.',
+      accepts: {arg: 'profileId', type: 'number', http: { source: 'query' } },
+      returns: {arg: 'Summary full', type: 'String'}
     }
   );
 
+  // Summary-column statistics override findById
+  Profile.summaryColumn = function(profileId, cb) {
+
+    Profile.findById( profileId, function (err, instance) {
+
+      var csv = dl.csv(instance.url);
+
+      var data = dl.summary(csv, [instance.column]);
+
+      cb(null, data);
+    });
+  };
+
+  // Summary-column remote method
+  Profile.remoteMethod (
+    'summaryColumn',
+    {
+      http: {path: '/summary/column', verb: 'get'},
+      description: 'Generate a summary for a specified column.',
+      accepts: {arg: 'profileId', type: 'number', http: { source: 'query' } },
+      returns: {arg: 'Summary column', type: 'String'}
+    }
+  );
 };
 

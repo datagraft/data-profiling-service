@@ -9,6 +9,10 @@
     "url": {
       "type": "string",
       "required": true
+    },
+    "column": {
+      "type": "string",
+      "required": false
     }
   },
   "validations": [],
