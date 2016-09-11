@@ -5,10 +5,10 @@ var dl = require('datalib');
 module.exports = function(Profile) {
 
   Profile.disableRemoteMethod("create", false);
-  Profile.disableRemoteMethod("upsert", true);
+  Profile.disableRemoteMethod("upsert", false);
   Profile.disableRemoteMethod("updateAll", true);
 
-  Profile.disableRemoteMethod("find", false);
+  Profile.disableRemoteMethod("find", true);
   Profile.disableRemoteMethod("findById", false);
   Profile.disableRemoteMethod("findOne", true);
 
@@ -22,55 +22,188 @@ module.exports = function(Profile) {
   Profile.disableRemoteMethod("prototype.updateAttributes", true);
   Profile.disableRemoteMethod("replaceById", true);
 
-  // Summary-full statistics override findById
+
+  // --- Statistics/summary/full ---
+
   Profile.summaryFull = function(id, cb) {
 
     Profile.findById( id, function (err, instance) {
 
       var csv = dl.csv(instance.url);
-
       var data = dl.summary(csv);
 
       for(var i = 0; i < data.length; i++) {
         delete data[i].unique;
       }
+      console.log('Summary/full generated ---> OK');
+
       cb(null, data);
+
     });
   };
 
-  // Summary-full remote method
   Profile.remoteMethod (
     'summaryFull',
     {
-      http: {path: '/summary/full', verb: 'get'},
-      description: 'Generate a full summary for all columns in a dataset.',
+      http: {path: '/statistics/summary/full', verb: 'get'},
+      description: 'Generate a full summary query for all columns.',
       accepts: {arg: 'profileId', type: 'number', http: { source: 'query' } },
       returns: {arg: 'Summary full', type: 'String'}
     }
   );
 
-  // Summary-column statistics override findById
-  Profile.summaryColumn = function(profileId, cb) {
+
+  // --- Statistics/summary/full/column ---
+
+  Profile.summaryFullCol = function(profileId, cb) {
 
     Profile.findById( profileId, function (err, instance) {
 
       var csv = dl.csv(instance.url);
 
       var data = dl.summary(csv, [instance.column]);
+      delete data[0].unique;
+
+      console.log('Summary/full/column generated ---> OK');
 
       cb(null, data);
+
     });
   };
 
-  // Summary-column remote method
   Profile.remoteMethod (
-    'summaryColumn',
+    'summaryFullCol',
     {
-      http: {path: '/summary/column', verb: 'get'},
-      description: 'Generate a summary for a specified column.',
+      http: {path: '/statistics/summary/full/column', verb: 'get'},
+      description: 'Create a full summary query for a specific column.',
       accepts: {arg: 'profileId', type: 'number', http: { source: 'query' } },
       returns: {arg: 'Summary column', type: 'String'}
     }
   );
-};
 
+
+  // --- Statistics/summary/normal ---
+
+  Profile.summaryNormal = function(profileId, cb) {
+
+    Profile.findById( profileId, function (err, instance) {
+
+      var csv = dl.csv(instance.url);
+      var keys = dl.keys(csv[0]);
+
+      var data = [];
+
+      for (var i=0; i <keys.length; i++) {
+
+        // default profile object
+        var obj = {
+          field: "",
+          type: "",
+          count: 0,
+          valid: 0,
+          missing: 0,
+          distinct: 0,
+          min: 0,
+          max: 0,
+          mean: 0
+        };
+
+        // processing statistics, updating profile object values
+        obj.field = keys[i];
+        obj.type = dl.type(csv, keys[i]);
+        obj.count = dl.count(csv, keys[i]);
+        obj.valid = dl.count.valid(csv, keys[i]);
+        obj.missing = dl.count.missing(csv, keys[i]);
+        obj.distinct = dl.count.distinct(csv, keys[i]);
+
+        if (obj.type === 'string') {
+          delete obj.min;
+          delete obj.max;
+          delete obj.mean;
+        }
+        else {
+          obj.min = dl.min(csv, keys[i]);
+          obj.max = dl.max(csv, keys[i]);
+          obj.mean = dl.mean(csv, keys[i]);
+        }
+        data.push(obj);
+      }
+
+      console.log('Summary/normal generated ---> OK');
+
+      cb(null, data);
+
+    });
+  };
+
+  Profile.remoteMethod (
+    'summaryNormal',
+    {
+      http: {path: '/statistics/summary/normal', verb: 'get'},
+      description: 'Create a regular summary query.',
+      accepts: {arg: 'profileId', type: 'number', http: { source: 'query' } },
+      returns: {arg: 'Summary normal', type: 'String'}
+    }
+  );
+
+
+  // --- Groupby/summarize ---
+
+  Profile.groupBy = function(id, cb) {
+
+    Profile.findById( id, function (err, instance) {
+
+      var csv = dl.csv(instance.url);
+
+      var data = dl.groupby(instance.groupby)
+        .summarize([
+          {name: instance.aggregation, ops: [instance.summarize]}
+        ])
+        .execute(csv);
+
+      console.log('Groupby/summarize generated ---> OK');
+
+      cb(null, data);
+
+    });
+  };
+
+  Profile.remoteMethod (
+    'groupBy',
+    {
+      http: {path: '/groupby/summarize', verb: 'get'},
+      description: 'Create a group-by aggregation query.',
+      accepts: {arg: 'profileId', type: 'number', http: { source: 'query' } },
+      returns: {arg: 'Groupby aggregation', type: 'String'}
+    }
+  );
+
+  // --- Statistics/histogram ---
+
+  Profile.histogram = function(id, cb) {
+
+    Profile.findById( id, function (err, instance) {
+
+      var csv = dl.csv(instance.url);
+
+      var data = dl.histogram(csv, instance.column);
+
+      console.log('Statistics/histogram generated ---> OK');
+
+      cb(null, data);
+
+    });
+  };
+
+  Profile.remoteMethod (
+    'histogram',
+    {
+      http: {path: '/statistics/histogram', verb: 'get'},
+      description: 'Create a histogram query.',
+      accepts: {arg: 'profileId', type: 'number', http: { source: 'query' } },
+      returns: {arg: 'Histogram', type: 'String'}
+    }
+  );
+
+  // end
+};
