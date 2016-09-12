@@ -30,6 +30,7 @@ module.exports = function(Profile) {
     Profile.findById( id, function (err, instance) {
 
       var csv = dl.csv(instance.url);
+
       var data = dl.summary(csv);
 
       for(var i = 0; i < data.length; i++) {
@@ -202,6 +203,117 @@ module.exports = function(Profile) {
       description: 'Create a histogram query.',
       accepts: {arg: 'profileId', type: 'number', http: { source: 'query' } },
       returns: {arg: 'Histogram', type: 'String'}
+    }
+  );
+
+
+  // --- Statistics/count/values ---
+
+  Profile.counter = function(id, cb) {
+
+    Profile.findById( id, function (err, instance) {
+
+      var csv = dl.csv(instance.url);
+
+      var data = dl.count(csv, instance.column);
+
+      console.log('Statistics/count/values generated ---> OK');
+
+      cb(null, data);
+
+    });
+  };
+
+  Profile.remoteMethod (
+    'counter',
+    {
+      http: {path: '/statistics/count/values', verb: 'get'},
+      description: 'Count the number of values including nulls.',
+      accepts: {arg: 'profileId', type: 'number', http: { source: 'query' } },
+      returns: {arg: 'Values count', type: 'String'}
+    }
+  );
+
+  // --- Statistics/count/valid ---
+
+  Profile.valid = function(id, cb) {
+
+    Profile.findById( id, function (err, instance) {
+
+      var csv = dl.csv(instance.url);
+
+      var data = dl.count.valid(csv, instance.column);
+
+      console.log('Statistics/count/valid generated ---> OK');
+
+      cb(null, data);
+
+    });
+  };
+
+  Profile.remoteMethod (
+    'valid',
+    {
+      http: {path: '/statistics/count/valid', verb: 'get'},
+      description: 'Count the number of values that are not null, undefined or NaN.',
+      accepts: {arg: 'profileId', type: 'number', http: { source: 'query' } },
+      returns: {arg: 'Valid', type: 'String'}
+    }
+  );
+
+
+  // --- Statistics/count/missing ---
+
+  Profile.missing = function(id, cb) {
+
+    Profile.findById( id, function (err, instance) {
+
+      var csv = dl.csv(instance.url);
+
+      var data = dl.count.missing(csv, instance.column);
+
+      console.log('Statistics/count/missing generated ---> OK');
+
+      cb(null, data);
+
+    });
+  };
+
+  Profile.remoteMethod (
+    'missing',
+    {
+      http: {path: '/statistics/count/missing', verb: 'get'},
+      description: 'Count the number of null and undefined values.',
+      accepts: {arg: 'profileId', type: 'number', http: { source: 'query' } },
+      returns: {arg: 'Missing', type: 'String'}
+    }
+  );
+
+
+  // --- Statistics/count/distinct ---
+
+  Profile.distinct = function(id, cb) {
+
+    Profile.findById( id, function (err, instance) {
+
+      var csv = dl.csv(instance.url);
+
+      var data = dl.count.distinct(csv, instance.column);
+
+      console.log('Statistics/count/distinct generated ---> OK');
+
+      cb(null, data);
+
+    });
+  };
+
+  Profile.remoteMethod (
+    'distinct',
+    {
+      http: {path: '/statistics/count/distinct', verb: 'get'},
+      description: 'Count the number of distinct values.',
+      accepts: {arg: 'profileId', type: 'number', http: { source: 'query' } },
+      returns: {arg: 'Distinct', type: 'String'}
     }
   );
 
